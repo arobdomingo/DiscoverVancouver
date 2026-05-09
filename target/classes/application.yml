@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: discover-vancouver-backend
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/discover_vancouver
+
+server:
+  port: 8080

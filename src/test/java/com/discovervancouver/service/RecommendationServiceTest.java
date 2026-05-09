@@ -1,0 +1,272 @@
+package com.discovervancouver.service;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
+
+import com.discovervancouver.dto.WeatherResponse;
+import com.discovervancouver.dto.RecommendationResponse;
+import com.discovervancouver.model.Place;
+
+public class RecommendationServiceTest {
+    
+    @Test
+    void matchingCategoryRanksHigher(){
+        PlaceService placeService = mock(PlaceService.class);
+        DistanceService distanceService = new DistanceService();
+        WeatherService weatherService = mock(WeatherService.class);
+
+
+        Place cafe = new Place(
+            "place1",
+            "Breka Bakery & Cafe",
+            "cafe",
+            "Casual cafe with pastries and study-friendly seating.",
+            "855 Davie St, Vancouver, BC",
+            1,
+            true,
+            true,
+            49.2810,
+            -123.1170,
+            List.of("cafe", "study", "casual", "late-night", "wifi")
+        );
+
+        Place park = new Place(
+            "place2",
+            "Nelson Park",
+            "park",
+            "Small downtown green space for a calm outdoor reset.",
+            "1030 Bute St, Vancouver, BC",
+            0,
+            false,
+            true,
+            49.2813,
+            -123.1308,
+            List.of("park", "quiet", "walk", "free", "outdoor")
+        );
+
+        when(placeService.getPlaces(null)).thenReturn(List.of(cafe, park));
+        when(weatherService.getCurrentWeatherResponse(49.2827, -123.1207))
+        .thenReturn(new WeatherResponse(12.0, 0.0, 3, false));
+
+
+        RecommendationService recommendationService = new RecommendationService(placeService, distanceService, weatherService);
+
+        List<RecommendationResponse> recommendations = recommendationService.getRecommendations(
+            49.2827,
+            -123.1207,
+            "cafe",
+            true,
+            20,
+            "low",
+            null
+        );
+
+        assertEquals("place1", recommendations.get(0).placeId());
+    }
+
+    @Test
+    void placesOusideWalkingRangeFilteredOut(){
+        PlaceService placeService = mock(PlaceService.class);
+        DistanceService distanceService = new DistanceService();
+        WeatherService weatherService = mock(WeatherService.class);
+
+        Place nearbyCafe = new Place(
+            "place1",
+            "Breka Bakery & Cafe",
+            "cafe",
+            "Casual cafe with pastries and study-friendly seating.",
+            "855 Davie St, Vancouver, BC",
+            1,
+            true,
+            true,
+            49.2810,
+            -123.1170,
+            List.of("cafe", "study", "casual", "late-night", "wifi")
+        );
+
+        Place farPark = new Place(
+            "place2",
+            "Stanley Park",
+            "park",
+            "Large urban park with trails and waterfront views.",
+            "Stanley Park Dr, Vancouver, BC",
+            0,
+            false,
+            true,
+            49.3043,
+            -123.1443,
+            List.of("park", "walk", "outdoor", "scenic")
+        );
+
+        when(placeService.getPlaces(null)).thenReturn(List.of(nearbyCafe, farPark));
+        when(weatherService.getCurrentWeatherResponse(49.2827, -123.1207))
+        .thenReturn(new WeatherResponse(12.0, 0.0, 3, false));
+
+        RecommendationService recommendationService = new RecommendationService(
+            placeService,
+            distanceService,
+            weatherService
+        );
+
+        List<RecommendationResponse> recommendations = recommendationService.getRecommendations(
+            49.2827,
+            -123.1207,
+            null,
+            null,
+            10,
+            null,
+            null
+        );
+
+        assertEquals(1, recommendations.size());
+        assertEquals("place1", recommendations.get(0).placeId());
+    }
+
+    @Test
+    void matchingAtmosphereAddsReason(){
+        PlaceService placeService = mock(PlaceService.class);
+        DistanceService distanceService = new DistanceService();
+        WeatherService weatherService = mock(WeatherService.class);
+
+
+        Place library = new Place(
+            "place1",
+            "Vancouver Public Library Central",
+            "study",
+            "Iconic central library with quiet indoor work areas.",
+            "350 W Georgia St, Vancouver, BC",
+            0,
+            true,
+            true,
+            49.2797,
+            -123.1156,
+            List.of("study", "quiet", "free", "rainy-day", "indoor")
+        );
+
+        when(placeService.getPlaces(null)).thenReturn(List.of(library));
+        when(weatherService.getCurrentWeatherResponse(49.2827, -123.1207))
+        .thenReturn(new WeatherResponse(12.0, 0.0, 3, false));
+
+        RecommendationService recommendationService = new RecommendationService(
+                placeService,
+                distanceService,
+                weatherService
+        );
+
+        List<RecommendationResponse> recommendations = recommendationService.getRecommendations(
+            49.2827,
+            -123.1207,
+            null,
+            null,
+            20,
+            null,
+            "quiet"
+        );
+
+        assertEquals(1, recommendations.size());
+        assertEquals("place1", recommendations.get(0).placeId());
+        assertEquals(true, recommendations.get(0).reasons().contains("Matches your quiet atmosphere preference"));
+
+    }
+
+    @Test
+    void matchingBudgetAddsReason() {
+        PlaceService placeService = mock(PlaceService.class);
+        DistanceService distanceService = new DistanceService();
+        WeatherService weatherService = mock(WeatherService.class);
+    
+        Place library = new Place(
+                "place1",
+                "Vancouver Public Library Central",
+                "study",
+                "Iconic central library with quiet indoor work areas.",
+                "350 W Georgia St, Vancouver, BC",
+                0,
+                true,
+                true,
+                49.2797,
+                -123.1156,
+                List.of("study", "quiet", "free", "rainy-day", "indoor")
+        );
+    
+        when(placeService.getPlaces(null)).thenReturn(List.of(library));
+        when(weatherService.getCurrentWeatherResponse(49.2827, -123.1207))
+        .thenReturn(new WeatherResponse(12.0, 0.0, 3, false));
+
+        RecommendationService recommendationService = new RecommendationService(
+            placeService,
+            distanceService,
+            weatherService
+        );
+
+        List<RecommendationResponse> recommendations = recommendationService.getRecommendations(
+            49.2827,
+            -123.1207,
+            null,
+            null,
+            20,
+            "free",
+            null
+        );
+
+        assertEquals(1, recommendations.size());
+        assertTrue(recommendations.get(0).reasons().contains("Fits your free budget preference"));
+    
+    }
+
+    @Test
+    void rainyWeatherBoostsIndoorRainyDayPlaces(){
+        PlaceService placeService = mock(PlaceService.class);
+        DistanceService distanceService = new DistanceService();
+        WeatherService weatherService = mock(WeatherService.class);
+
+        Place library = new Place(
+            "place1",
+            "Vancouver Public Library Central",
+            "study",
+            "Iconic central library with quiet indoor work areas.",
+            "350 W Georgia St, Vancouver, BC",
+            0,
+            true,
+            true,
+            49.2797,
+            -123.1156,
+            List.of("study", "quiet", "free", "rainy-day", "indoor")
+        );
+
+
+        when(weatherService.getCurrentWeatherResponse(49.2827, -123.1207))
+        .thenReturn(new WeatherResponse(9.0, 1.2, 61, true));
+        when(placeService.getPlaces(null)).thenReturn(List.of(library));
+
+        RecommendationService recommendationService = new RecommendationService(
+            placeService,
+            distanceService,
+            weatherService
+        );
+        
+        List<RecommendationResponse> recommendations = recommendationService.getRecommendations(
+            49.2827,
+            -123.1207,
+            null,
+            null,
+            20,
+            null,
+            null
+        );
+
+        assertEquals(1, recommendations.size());
+        assertTrue(recommendations.get(0).rainyWeather());
+        assertTrue(recommendations.get(0).reasons().contains("Good indoor option for rainy weather"));
+        assertTrue(recommendations.get(0).reasons().contains("Tagged as a good rainy-day option"));
+
+    }
+
+
+}
