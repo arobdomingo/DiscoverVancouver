@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Discover Vancouver</string>
+    <string name="app_tagline">Find a place that fits right now.</string>
+    <string name="use_location">Use my location</string>
+    <string name="location_ready">Using your current location</string>
+    <string name="location_default">Using downtown Vancouver</string>
+    <string name="discover_places">Discover places</string>
+    <string name="preferences">What are you looking for?</string>
+    <string name="results">Recommended for you</string>
+    <string name="no_results">No matching places yet. Try a longer walk or fewer filters.</string>
+    <string name="category_hint">Category</string>
+    <string name="atmosphere_hint">Atmosphere, e.g. quiet</string>
+    <string name="budget_hint">Budget</string>
+    <string name="indoor_preference">Prefer indoor places</string>
+    <string name="open_only">Only show places open now</string>
+    <string name="walking_range">Walking range: %1$d minutes</string>
+    <string name="loading">Finding nearby places…</string>
+    <string name="retry">Try again</string>
+    <string name="back">Back</string>
+    <string name="why_recommended">Why this place</string>
+    <string name="details">Place details</string>
+    <string name="open_in_maps">Open in Maps</string>
+</resources>

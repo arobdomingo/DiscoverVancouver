@@ -15,6 +15,8 @@ public record RecommendationResponse(
     int score,
     int distanceMeters,
     int walkingMinutes,
+    double latitude,
+    double longitude,
     boolean rainyWeather,
     List<String> reasons
 ) {

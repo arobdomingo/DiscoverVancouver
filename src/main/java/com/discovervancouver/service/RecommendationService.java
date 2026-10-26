@@ -181,6 +181,8 @@ public class RecommendationService {
             score,
             candidate.distanceMeters(),
             candidate.walkingMinutes(),
+            place.getLatitude(),
+            place.getLongitude(),
             rainyWeather,
             reasons
         );
