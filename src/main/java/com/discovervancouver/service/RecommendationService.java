@@ -4,10 +4,14 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.springframework.stereotype.Service;
 
 import com.discovervancouver.dto.RecommendationResponse;
 import com.discovervancouver.model.Place;
+import com.discovervancouver.exception.WeatherUnavailableException;
 
 @Service
 public class RecommendationService {
@@ -16,6 +20,8 @@ public class RecommendationService {
     private final DistanceService distanceService;
     private final WeatherService weatherService;
 
+    private static final Logger logger = LoggerFactory.getLogger(RecommendationService.class);
+
     public RecommendationService(PlaceService placeService, DistanceService distanceService, WeatherService weatherService) {
         this.placeService = placeService;
         this.distanceService = distanceService;
@@ -23,13 +29,27 @@ public class RecommendationService {
     }
 
     public List<RecommendationResponse> getRecommendations(double latitude, double longitude, String category, Boolean indoorPreferred, int maxWalkingMinutes, String budgetPreference, String atmosphere) {
-        boolean rainyWeather = weatherService.getCurrentWeatherResponse(latitude, longitude).rainy();
+        boolean rainyWeather = getRainyWeatherOrDefault(latitude, longitude);
 
         return placeService.getPlaces(null).stream()
             .map(place -> scorePlace(place, latitude, longitude, category, indoorPreferred, maxWalkingMinutes, budgetPreference, atmosphere, rainyWeather))
             .filter(recommendation -> recommendation.walkingMinutes() <= maxWalkingMinutes)
             .sorted(Comparator.comparingInt(RecommendationResponse::score).reversed())
             .toList();
+    }
+
+    private boolean getRainyWeatherOrDefault(double latitude, double longitude){
+        try {
+            return weatherService
+                .getCurrentWeatherResponse(latitude, longitude)
+                .rainy();
+        } catch (WeatherUnavailableException exception) {
+            logger.warn(
+                "Weather is unavailable; using weather-neutral scoring"
+            );
+
+            return false;
+        }
     }
 
     private RecommendationResponse scorePlace(Place place, double latitude, double longitude, String category, Boolean indoorPreferred, int maxWalkingMinutes, String budgetPreference, String atmosphere, boolean rainyWeather) {

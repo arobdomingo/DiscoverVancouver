@@ -1,0 +1,62 @@
+package com.discovervancouver.repository;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
+import java.util.List;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.data.mongodb.test.autoconfigure.DataMongoTest;
+
+import com.discovervancouver.model.Place;
+
+@DataMongoTest(properties = {
+    "spring.data.mongodb.uri="
+        + "mongodb://localhost:27017/discover_vancouver_test"
+})
+class PlaceRepositoryIntegrationTest {
+
+    @Autowired
+    private PlaceRepository placeRepository;
+
+    @BeforeEach
+    void cleanBeforeTest() {
+        placeRepository.deleteAll();
+    }
+
+    @AfterEach
+    void cleanAfterTest() {
+        placeRepository.deleteAll();
+    }
+
+    @Test
+    void mongoGeneratesIdAndCategoryQueryIgnoresCase() {
+        Place place = new Place(
+            null,
+            "Test Cafe",
+            "cafe",
+            "A place used by an integration test.",
+            "123 Test St, Vancouver, BC",
+            1,
+            true,
+            true,
+            49.2827,
+            -123.1207,
+            List.of("coffee", "quiet")
+        );
+
+        Place savedPlace = placeRepository.save(place);
+
+        assertNotNull(savedPlace.getId());
+
+        List<Place> results =
+            placeRepository.findByCategoryIgnoreCase("CAFE");
+
+        assertFalse(results.isEmpty());
+        assertEquals(savedPlace.getId(), results.get(0).getId());
+    }
+}

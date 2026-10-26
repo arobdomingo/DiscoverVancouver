@@ -3,7 +3,13 @@ spring:
     name: discover-vancouver-backend
   data:
     mongodb:
-      uri: mongodb://localhost:27017/discover_vancouver
+      uri: ${MONGODB_URI:mongodb://localhost:27017/discover_vancouver}
 
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
+
+app:
+  weather:
+    base-url: ${WEATHER_BASE_URL:https://api.open-meteo.com/v1}
+    connect-timeout: ${WEATHER_CONNECT_TIMEOUT:3s}
+    read-timeout: ${WEATHER_READ_TIMEOUT:5s}

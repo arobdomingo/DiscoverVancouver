@@ -13,13 +13,10 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 
-
-
 @Document(collection = "places")
 public class Place {
     
     @Id
-    @NotBlank
     private String id;
 
     @NotBlank

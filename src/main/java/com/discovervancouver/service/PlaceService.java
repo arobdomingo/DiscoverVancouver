@@ -7,8 +7,6 @@ import org.springframework.stereotype.Service;
 import com.discovervancouver.model.Place;
 import com.discovervancouver.repository.PlaceRepository;
 
-import org.springframework.web.bind.annotation.RequestBody;
-
 @Service
 public class PlaceService {
 
@@ -29,7 +27,7 @@ public class PlaceService {
         return placeRepository.findById(placeId);
     }
 
-    public Place createPlace(@RequestBody Place place){
+    public Place createPlace(Place place){
         return placeRepository.save(place);
     }
 
@@ -49,8 +47,6 @@ public class PlaceService {
         }
 
         updatedPlace.setId(placeId);
-        Place savedPlace = placeRepository.save(updatedPlace);
-
-        return Optional.of(savedPlace);
+        return Optional.of(placeRepository.save(updatedPlace));
     }
 }

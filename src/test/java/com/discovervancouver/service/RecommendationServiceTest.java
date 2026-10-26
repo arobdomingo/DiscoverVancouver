@@ -9,12 +9,14 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
+import com.discovervancouver.exception.WeatherUnavailableException;
+
 import com.discovervancouver.dto.WeatherResponse;
 import com.discovervancouver.dto.RecommendationResponse;
 import com.discovervancouver.model.Place;
 
 public class RecommendationServiceTest {
-    
+
     @Test
     void matchingCategoryRanksHigher(){
         PlaceService placeService = mock(PlaceService.class);
@@ -265,8 +267,45 @@ public class RecommendationServiceTest {
         assertTrue(recommendations.get(0).rainyWeather());
         assertTrue(recommendations.get(0).reasons().contains("Good indoor option for rainy weather"));
         assertTrue(recommendations.get(0).reasons().contains("Tagged as a good rainy-day option"));
-
     }
 
+        @Test
+    void recommendationsStillWorkWhenWeatherIsUnavailable() {
+        PlaceService placeService = mock(PlaceService.class);
+        DistanceService distanceService = new DistanceService();
+        WeatherService weatherService = mock(WeatherService.class);
+
+        Place library = new Place(
+            "place1",
+            "Vancouver Public Library Central",
+            "study",
+            "Quiet indoor work areas.",
+            "350 W Georgia St, Vancouver, BC",
+            0,
+            true,
+            true,
+            49.2797,
+            -123.1156,
+            List.of("study", "quiet", "indoor")
+        );
+
+        when(placeService.getPlaces(null))
+            .thenReturn(List.of(library));
+
+        when(weatherService.getCurrentWeatherResponse(49.2827, -123.1207)).thenThrow(
+            new WeatherUnavailableException(
+                "Current weather is temporarily unavailable",
+                new RuntimeException("Simulated failure")
+            )
+        );
+
+        RecommendationService recommendationService = new RecommendationService(placeService, distanceService, weatherService);
+
+        List<RecommendationResponse> recommendations = recommendationService.getRecommendations(49.2827, -123.1207, null, null, 20, null, null);
+
+        assertEquals(1, recommendations.size());
+        assertEquals("place1", recommendations.get(0).placeId());
+        assertEquals(false, recommendations.get(0).rainyWeather());
+    }
 
 }

@@ -1,5 +1,8 @@
 package com.discovervancouver.controller;
 
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -20,8 +23,15 @@ public class WeatherController {
 
     @GetMapping("/current")
     public WeatherResponse getCurrentWeather(
-        @RequestParam double lat,
-        @RequestParam double lng
+        @RequestParam
+        @DecimalMin(value = "-90.0", message = "lat must be at least -90")
+        @DecimalMax(value = "90.0", message = "lat must be at most 90")
+        double lat,
+
+        @RequestParam
+        @DecimalMin(value = "-180.0", message = "lng must be at least -180")
+        @DecimalMax(value = "180.0", message = "lng must be at most 180")
+        double lng
     ) {
         return weatherService.getCurrentWeatherResponse(lat, lng);
     }

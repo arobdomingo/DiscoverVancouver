@@ -1,5 +1,6 @@
 package com.discovervancouver.controller;
 
+import java.net.URI;
 import java.util.List;
 
 import org.springframework.http.ResponseEntity;
@@ -13,7 +14,14 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import org.springframework.web.util.UriComponentsBuilder;
+
 import jakarta.validation.Valid;
+
+import com.discovervancouver.dto.CreatePlaceRequest;
+import com.discovervancouver.dto.PlaceResponse;
+import com.discovervancouver.dto.UpdatePlaceRequest;
+import com.discovervancouver.mapper.PlaceMapper;
 
 import com.discovervancouver.model.Place;
 import com.discovervancouver.service.PlaceService;
@@ -23,33 +31,53 @@ import com.discovervancouver.service.PlaceService;
 public class PlaceController {
 
     private final PlaceService placeService;
+    private final PlaceMapper placeMapper;
     
-    public PlaceController(PlaceService placeService) {
+    public PlaceController(PlaceService placeService, PlaceMapper placeMapper) {
         this.placeService = placeService;
+        this.placeMapper = placeMapper;
     }
 
     @GetMapping
-    public List<Place> getPlaces(@RequestParam(required = false) String category) {
-        return placeService.getPlaces(category);
+    public List<PlaceResponse> getPlaces(@RequestParam(required = false) String category) {
+        return placeService.getPlaces(category)
+            .stream()
+            .map(placeMapper::toResponse)
+            .toList();
     }
 
     @GetMapping("/{placeId}")
-    public ResponseEntity<Place> getPlaceById(@PathVariable String placeId) {
+    public ResponseEntity<PlaceResponse> getPlaceById(@PathVariable String placeId) {
         return placeService.getPlaceById(placeId)
+            .map(placeMapper::toResponse)
             .map(ResponseEntity::ok)
-            .orElse(ResponseEntity.notFound().build());
+            .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @PostMapping
-    public Place createPlace(@Valid @RequestBody Place place){
-        return placeService.createPlace(place);
+    public ResponseEntity<PlaceResponse> createPlace(@Valid @RequestBody CreatePlaceRequest request, UriComponentsBuilder uriBuilder){
+
+        Place place = placeMapper.toEntity(request);
+        Place savedPlace = placeService.createPlace(place);
+
+        URI location = uriBuilder
+            .path("/api/places/{placeId}")
+            .buildAndExpand(savedPlace.getId())
+            .toUri();
+
+        return ResponseEntity
+            .created(location)
+            .body(placeMapper.toResponse(savedPlace));
     }
 
     @PutMapping("/{placeId}")
-    public ResponseEntity<Place> updatePlace(@PathVariable String placeId, @Valid @RequestBody Place updatedPlace){
+    public ResponseEntity<PlaceResponse> updatePlace(@PathVariable String placeId, @Valid @RequestBody UpdatePlaceRequest request){
+        Place updatedPlace = placeMapper.toEntity(placeId, request);
+
         return placeService.updatePlace(placeId, updatedPlace)
+            .map(placeMapper::toResponse)
             .map(ResponseEntity::ok)
-            .orElse(ResponseEntity.notFound().build());
+            .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{placeId}")

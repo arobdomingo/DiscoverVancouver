@@ -1,0 +1,125 @@
+package com.discovervancouver.controller;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+
+import com.discovervancouver.mapper.PlaceMapper;
+import com.discovervancouver.model.Place;
+import com.discovervancouver.service.PlaceService;
+
+@WebMvcTest(PlaceController.class)
+@Import(PlaceMapper.class)
+class PlaceControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockitoBean
+    private PlaceService placeService;
+
+    @Test
+    void getPlacesReturnsMappedPlaces() throws Exception {
+        when(placeService.getPlaces(null))
+            .thenReturn(List.of(createLibrary("place1")));
+
+        mockMvc.perform(get("/api/places"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].id").value("place1"))
+            .andExpect(jsonPath("$[0].name")
+                .value("Vancouver Public Library Central"))
+            .andExpect(jsonPath("$[0].category").value("study"));
+    }
+
+    @Test
+    void createPlaceReturnsCreatedResource() throws Exception {
+        when(placeService.createPlace(any(Place.class)))
+            .thenAnswer(invocation -> {
+                Place place = invocation.getArgument(0);
+                place.setId("generated-id");
+                return place;
+            });
+
+        String requestBody = """
+            {
+              "name": "Vancouver Art Gallery",
+              "category": "museum",
+              "description": "Downtown art gallery.",
+              "address": "750 Hornby St, Vancouver, BC",
+              "priceLevel": 2,
+              "indoor": true,
+              "openNow": true,
+              "latitude": 49.2829,
+              "longitude": -123.1205,
+              "tags": ["art", "indoor"]
+            }
+            """;
+
+        mockMvc.perform(post("/api/places")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+            .andExpect(status().isCreated())
+            .andExpect(header().exists("Location"))
+            .andExpect(jsonPath("$.id").value("generated-id"))
+            .andExpect(jsonPath("$.name")
+                .value("Vancouver Art Gallery"));
+    }
+
+    @Test
+    void invalidPlaceReturnsStructuredBadRequest() throws Exception {
+        String requestBody = """
+            {
+              "name": "",
+              "category": "",
+              "description": "",
+              "address": "",
+              "priceLevel": 9,
+              "indoor": true,
+              "openNow": true,
+              "latitude": 200,
+              "longitude": -300,
+              "tags": [""]
+            }
+            """;
+
+        mockMvc.perform(post("/api/places")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.status").value(400))
+            .andExpect(jsonPath("$.message")
+                .value("Request body validation failed"))
+            .andExpect(jsonPath("$.errors.name").exists())
+            .andExpect(jsonPath("$.errors.priceLevel").exists());
+    }
+
+    private Place createLibrary(String id) {
+        return new Place(
+            id,
+            "Vancouver Public Library Central",
+            "study",
+            "Quiet indoor work areas.",
+            "350 W Georgia St, Vancouver, BC",
+            0,
+            true,
+            true,
+            49.2797,
+            -123.1156,
+            List.of("study", "quiet", "indoor")
+        );
+    }
+}
