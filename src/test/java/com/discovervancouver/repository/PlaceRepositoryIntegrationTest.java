@@ -4,7 +4,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+import java.time.DayOfWeek;
+import java.time.LocalTime;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -13,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.mongodb.test.autoconfigure.DataMongoTest;
 
 import com.discovervancouver.model.Place;
+import com.discovervancouver.model.OpeningPeriod;
 
 @DataMongoTest(properties = {
     "spring.data.mongodb.uri="
@@ -43,7 +47,13 @@ class PlaceRepositoryIntegrationTest {
             "123 Test St, Vancouver, BC",
             1,
             true,
-            true,
+            Map.of(
+                DayOfWeek.MONDAY,
+                List.of(new OpeningPeriod(
+                    LocalTime.of(8, 0),
+                    LocalTime.of(18, 0)
+                ))
+            ),
             49.2827,
             -123.1207,
             List.of("coffee", "quiet")

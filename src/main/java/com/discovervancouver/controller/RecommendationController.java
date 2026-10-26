@@ -60,9 +60,17 @@ public class RecommendationController {
 
         @RequestParam(required = false)
         @Size(max = 50, message = "atmosphere must contain at most 50 characters")
-        String atmosphere
+        String atmosphere,
+
+        @RequestParam(defaultValue = "false")
+        boolean openOnly,
+
+        @RequestParam(defaultValue = "10")
+        @Min(value = 1, message = "limit must be at least 1")
+        @Max(value = 50, message = "limit must be at most 50")
+        int limit
     ){
-        return recommendationService.getRecommendations(lat, lng, category, indoorPreferred, maxWalkingMinutes, budgetPreference, atmosphere);
+        return recommendationService.getRecommendations(lat, lng, category, indoorPreferred, maxWalkingMinutes, budgetPreference, atmosphere, openOnly, limit);
     }
     
 }

@@ -1,6 +1,8 @@
 package com.discovervancouver.dto;
 
+import java.time.DayOfWeek;
 import java.util.List;
+import java.util.Map;
 
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
@@ -9,6 +11,9 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.Valid;
+
+import com.discovervancouver.model.OpeningPeriod;
 
 public record CreatePlaceRequest(
 
@@ -34,7 +39,8 @@ public record CreatePlaceRequest(
 
     boolean indoor,
 
-    boolean openNow,
+    @NotNull
+    Map<DayOfWeek, List<@Valid OpeningPeriod>> openingHours,
 
     @DecimalMin("-90.0")
     @DecimalMax("90.0")

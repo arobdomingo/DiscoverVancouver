@@ -9,6 +9,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.List;
+import java.time.DayOfWeek;
+import java.time.LocalTime;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +23,8 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import com.discovervancouver.mapper.PlaceMapper;
 import com.discovervancouver.model.Place;
+import com.discovervancouver.model.OpeningPeriod;
+import com.discovervancouver.service.OpeningHoursService;
 import com.discovervancouver.service.PlaceService;
 
 @WebMvcTest(PlaceController.class)
@@ -32,8 +37,13 @@ class PlaceControllerTest {
     @MockitoBean
     private PlaceService placeService;
 
+    @MockitoBean
+    private OpeningHoursService openingHoursService;
+
     @Test
     void getPlacesReturnsMappedPlaces() throws Exception {
+        when(openingHoursService.isOpenNow(any(Place.class)))
+            .thenReturn(true);
         when(placeService.getPlaces(null))
             .thenReturn(List.of(createLibrary("place1")));
 
@@ -47,6 +57,8 @@ class PlaceControllerTest {
 
     @Test
     void createPlaceReturnsCreatedResource() throws Exception {
+        when(openingHoursService.isOpenNow(any(Place.class)))
+            .thenReturn(true);
         when(placeService.createPlace(any(Place.class)))
             .thenAnswer(invocation -> {
                 Place place = invocation.getArgument(0);
@@ -62,7 +74,9 @@ class PlaceControllerTest {
               "address": "750 Hornby St, Vancouver, BC",
               "priceLevel": 2,
               "indoor": true,
-              "openNow": true,
+              "openingHours": {
+                "MONDAY": [{"opensAt": "09:00", "closesAt": "17:00"}]
+              },
               "latitude": 49.2829,
               "longitude": -123.1205,
               "tags": ["art", "indoor"]
@@ -89,7 +103,7 @@ class PlaceControllerTest {
               "address": "",
               "priceLevel": 9,
               "indoor": true,
-              "openNow": true,
+              "openingHours": {},
               "latitude": 200,
               "longitude": -300,
               "tags": [""]
@@ -116,10 +130,17 @@ class PlaceControllerTest {
             "350 W Georgia St, Vancouver, BC",
             0,
             true,
-            true,
+            alwaysOpenHours(),
             49.2797,
             -123.1156,
             List.of("study", "quiet", "indoor")
+        );
+    }
+
+    private Map<DayOfWeek, List<OpeningPeriod>> alwaysOpenHours() {
+        return Map.of(
+            DayOfWeek.MONDAY,
+            List.of(new OpeningPeriod(LocalTime.MIDNIGHT, LocalTime.MIDNIGHT))
         );
     }
 }

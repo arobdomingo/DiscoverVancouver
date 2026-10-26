@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import com.discovervancouver.dto.RecommendationResponse;
 import com.discovervancouver.model.Place;
 import com.discovervancouver.exception.WeatherUnavailableException;
+import com.discovervancouver.config.RecommendationProperties;
 
 @Service
 public class RecommendationService {
@@ -19,22 +20,51 @@ public class RecommendationService {
     private final PlaceService placeService;
     private final DistanceService distanceService;
     private final WeatherService weatherService;
+    private final OpeningHoursService openingHoursService;
+    private final TimeOfDayService timeOfDayService;
+    private final RecommendationProperties properties;
 
     private static final Logger logger = LoggerFactory.getLogger(RecommendationService.class);
 
-    public RecommendationService(PlaceService placeService, DistanceService distanceService, WeatherService weatherService) {
+    public RecommendationService(PlaceService placeService, DistanceService distanceService, WeatherService weatherService, OpeningHoursService openingHoursService, TimeOfDayService timeOfDayService, RecommendationProperties properties) {
         this.placeService = placeService;
         this.distanceService = distanceService;
         this.weatherService = weatherService;
+        this.openingHoursService = openingHoursService;
+        this.timeOfDayService = timeOfDayService;
+        this.properties = properties;
     }
 
     public List<RecommendationResponse> getRecommendations(double latitude, double longitude, String category, Boolean indoorPreferred, int maxWalkingMinutes, String budgetPreference, String atmosphere) {
+        return getRecommendations(
+            latitude,
+            longitude,
+            category,
+            indoorPreferred,
+            maxWalkingMinutes,
+            budgetPreference,
+            atmosphere,
+            false,
+            properties.getDefaultLimit()
+        );
+    }
+
+    public List<RecommendationResponse> getRecommendations(double latitude, double longitude, String category, Boolean indoorPreferred, int maxWalkingMinutes, String budgetPreference, String atmosphere, boolean openOnly, int limit) {
         boolean rainyWeather = getRainyWeatherOrDefault(latitude, longitude);
+        int resultLimit = Math.min(limit, properties.getMaximumLimit());
 
         return placeService.getPlaces(null).stream()
-            .map(place -> scorePlace(place, latitude, longitude, category, indoorPreferred, maxWalkingMinutes, budgetPreference, atmosphere, rainyWeather))
-            .filter(recommendation -> recommendation.walkingMinutes() <= maxWalkingMinutes)
-            .sorted(Comparator.comparingInt(RecommendationResponse::score).reversed())
+            .map(place -> createCandidate(place, latitude, longitude))
+            .filter(candidate -> candidate.walkingMinutes() <= maxWalkingMinutes)
+            .filter(candidate -> !openOnly || candidate.openNow())
+            .map(candidate -> scorePlace(candidate, category, indoorPreferred, maxWalkingMinutes, budgetPreference, atmosphere, rainyWeather))
+            .sorted(
+                Comparator.comparingInt(RecommendationResponse::score)
+                    .reversed()
+                    .thenComparingInt(RecommendationResponse::walkingMinutes)
+                    .thenComparing(RecommendationResponse::name)
+            )
+            .limit(resultLimit)
             .toList();
     }
 
@@ -52,52 +82,11 @@ public class RecommendationService {
         }
     }
 
-    private RecommendationResponse scorePlace(Place place, double latitude, double longitude, String category, Boolean indoorPreferred, int maxWalkingMinutes, String budgetPreference, String atmosphere, boolean rainyWeather) {
-        int score = 0;
-        List<String> reasons = new ArrayList<>();
-
-        if(category != null && !category.isBlank() && place.getCategory().equalsIgnoreCase(category)){
-            score += 25;
-            reasons.add("Matches your " + category + " preference");
-        }
-
-        if(indoorPreferred != null && place.isIndoor() == indoorPreferred) {
-            score += 15;
-            reasons.add(indoorPreferred
-                ? "Works well as an indoor option"
-                : "Works well as an outdoor option"
-            );
-        }
-
-        if(place.isOpenNow()){
-            score += 20;
-            reasons.add("Open now");
-        }
-
-        if(budgetPreference != null && !budgetPreference.isBlank()) {
-            Integer preferredPriceLevel = priceLevelForBudget(budgetPreference);
-
-            if(preferredPriceLevel != null && place.getPriceLevel() <= preferredPriceLevel){
-                score += 10;
-                reasons.add("Fits your " + budgetPreference + " budget preference");
-            }
-        }
-
-        if(atmosphere != null && !atmosphere.isBlank() && place.getTags().stream().anyMatch(tag -> tag.equalsIgnoreCase(atmosphere))){
-            score += 12;
-            reasons.add("Matches your " + atmosphere +" atmosphere preference");
-        }
-
-        if(rainyWeather && place.isIndoor()){
-            score += 10;
-            reasons.add("Good indoor option for rainy weather");
-        }
-
-        if(rainyWeather && place.getTags().stream().anyMatch(tag -> tag.equalsIgnoreCase("rainy-day"))){
-            score += 10;
-            reasons.add("Tagged as a good rainy-day option");
-        }
-
+    private PlaceCandidate createCandidate(
+        Place place,
+        double latitude,
+        double longitude
+    ) {
         int distanceMeters = distanceService.distanceMeters(
             latitude,
             longitude,
@@ -105,13 +94,77 @@ public class RecommendationService {
             place.getLongitude()
         );
 
-        int walkingMinutes = distanceService.walkingMinutes(distanceMeters);
-        int distanceScore = Math.max(0, 20 - walkingMinutes);
+        return new PlaceCandidate(
+            place,
+            distanceMeters,
+            distanceService.walkingMinutes(distanceMeters),
+            openingHoursService.isOpenNow(place)
+        );
+    }
+
+    private RecommendationResponse scorePlace(PlaceCandidate candidate, String category, Boolean indoorPreferred, int maxWalkingMinutes, String budgetPreference, String atmosphere, boolean rainyWeather) {
+        Place place = candidate.place();
+        RecommendationProperties.Weights weights = properties.getWeights();
+        int score = 0;
+        List<String> reasons = new ArrayList<>();
+
+        if(category != null && !category.isBlank() && place.getCategory().equalsIgnoreCase(category)){
+            score += weights.getCategory();
+            reasons.add("Matches your " + category + " preference");
+        }
+
+        if(indoorPreferred != null && place.isIndoor() == indoorPreferred) {
+            score += weights.getIndoor();
+            reasons.add(indoorPreferred
+                ? "Works well as an indoor option"
+                : "Works well as an outdoor option"
+            );
+        }
+
+        if(candidate.openNow()){
+            score += weights.getOpenNow();
+            reasons.add("Open now");
+        }
+
+        if(budgetPreference != null && !budgetPreference.isBlank()) {
+            Integer preferredPriceLevel = priceLevelForBudget(budgetPreference);
+
+            if(preferredPriceLevel != null && place.getPriceLevel() <= preferredPriceLevel){
+                score += weights.getBudget();
+                reasons.add("Fits your " + budgetPreference + " budget preference");
+            }
+        }
+
+        if(atmosphere != null && !atmosphere.isBlank() && place.getTags().stream().anyMatch(tag -> tag.equalsIgnoreCase(atmosphere))){
+            score += weights.getAtmosphere();
+            reasons.add("Matches your " + atmosphere +" atmosphere preference");
+        }
+
+        if(rainyWeather && place.isIndoor()){
+            score += weights.getRainyIndoor();
+            reasons.add("Good indoor option for rainy weather");
+        }
+
+        if(rainyWeather && place.getTags().stream().anyMatch(tag -> tag.equalsIgnoreCase("rainy-day"))){
+            score += weights.getRainyDayTag();
+            reasons.add("Tagged as a good rainy-day option");
+        }
+
+        String currentTimeTag = timeOfDayService.currentTag();
+        if (place.getTags().stream().anyMatch(tag -> tag.equalsIgnoreCase(currentTimeTag))) {
+            score += weights.getTimeOfDay();
+            reasons.add("Good match for the current time of day");
+        }
+
+        int distanceScore = Math.max(
+            0,
+            weights.getDistanceMaximum() - candidate.walkingMinutes()
+        );
         score += distanceScore;
 
-        reasons.add("About " + walkingMinutes + " minutes away on foot");
+        reasons.add("About " + candidate.walkingMinutes() + " minutes away on foot");
 
-        if(walkingMinutes <= maxWalkingMinutes) {
+        if(candidate.walkingMinutes() <= maxWalkingMinutes) {
             reasons.add("Within your " + maxWalkingMinutes + " minute walking range");
         }
 
@@ -123,14 +176,22 @@ public class RecommendationService {
             place.getAddress(),
             place.getPriceLevel(),
             place.isIndoor(),
-            place.isOpenNow(),
+            candidate.openNow(),
             place.getTags(),
             score,
-            distanceMeters,
-            walkingMinutes,
+            candidate.distanceMeters(),
+            candidate.walkingMinutes(),
             rainyWeather,
             reasons
         );
+    }
+
+    private record PlaceCandidate(
+        Place place,
+        int distanceMeters,
+        int walkingMinutes,
+        boolean openNow
+    ) {
     }
 
     private Integer priceLevelForBudget(String budgetPreference){

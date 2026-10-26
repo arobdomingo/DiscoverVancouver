@@ -6,9 +6,16 @@ import com.discovervancouver.model.Place;
 import com.discovervancouver.dto.CreatePlaceRequest;
 import com.discovervancouver.dto.UpdatePlaceRequest;
 import com.discovervancouver.dto.PlaceResponse;
+import com.discovervancouver.service.OpeningHoursService;
 
 @Component
 public class PlaceMapper{
+
+    private final OpeningHoursService openingHoursService;
+
+    public PlaceMapper(OpeningHoursService openingHoursService) {
+        this.openingHoursService = openingHoursService;
+    }
 
     public Place toEntity(CreatePlaceRequest request){
         return new Place(
@@ -19,7 +26,7 @@ public class PlaceMapper{
             request.address(),
             request.priceLevel(),
             request.indoor(),
-            request.openNow(),
+            request.openingHours(),
             request.latitude(),
             request.longitude(),
             request.tags()
@@ -35,7 +42,7 @@ public class PlaceMapper{
             request.address(),
             request.priceLevel(),
             request.indoor(),
-            request.openNow(),
+            request.openingHours(),
             request.latitude(),
             request.longitude(),
             request.tags()
@@ -51,7 +58,8 @@ public class PlaceMapper{
             place.getAddress(),
             place.getPriceLevel(),
             place.isIndoor(),
-            place.isOpenNow(),
+            openingHoursService.isOpenNow(place),
+            place.getOpeningHours(),
             place.getLatitude(),
             place.getLongitude(),
             place.getTags()

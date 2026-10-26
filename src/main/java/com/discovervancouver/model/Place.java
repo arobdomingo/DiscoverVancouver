@@ -3,7 +3,9 @@ package com.discovervancouver.model;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.time.DayOfWeek;
 import java.util.List;
+import java.util.Map;
 
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
@@ -48,9 +50,11 @@ public class Place {
 
 
     private boolean indoor;
-    private boolean openNow;
 
-    public Place(String id, String name, String category, String description, String address, int priceLevel, boolean indoor, boolean openNow, double latitude, double longitude, List<String> tags) {
+    @NotNull
+    private Map<DayOfWeek, List<OpeningPeriod>> openingHours;
+
+    public Place(String id, String name, String category, String description, String address, int priceLevel, boolean indoor, Map<DayOfWeek, List<OpeningPeriod>> openingHours, double latitude, double longitude, List<String> tags) {
         this.id = id;
         this.name = name;
         this.category = category;
@@ -58,7 +62,7 @@ public class Place {
         this.address = address;
         this.priceLevel = priceLevel;
         this.indoor = indoor;
-        this.openNow = openNow;
+        this.openingHours = openingHours;
         this.latitude = latitude;
         this.longitude = longitude;
         this.tags = tags;
@@ -108,8 +112,14 @@ public class Place {
         return tags;
     }
 
-    public boolean isOpenNow(){
-        return openNow;
+    public Map<DayOfWeek, List<OpeningPeriod>> getOpeningHours() {
+        return openingHours;
+    }
+
+    public void setOpeningHours(
+        Map<DayOfWeek, List<OpeningPeriod>> openingHours
+    ) {
+        this.openingHours = openingHours;
     }
 
 }

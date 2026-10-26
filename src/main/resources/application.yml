@@ -9,6 +9,20 @@ server:
   port: ${SERVER_PORT:8080}
 
 app:
+  time-zone: ${APP_TIME_ZONE:America/Vancouver}
+  recommendation:
+    default-limit: ${RECOMMENDATION_DEFAULT_LIMIT:10}
+    maximum-limit: ${RECOMMENDATION_MAXIMUM_LIMIT:50}
+    weights:
+      category: ${RECOMMENDATION_WEIGHT_CATEGORY:25}
+      indoor: ${RECOMMENDATION_WEIGHT_INDOOR:15}
+      open-now: ${RECOMMENDATION_WEIGHT_OPEN_NOW:20}
+      budget: ${RECOMMENDATION_WEIGHT_BUDGET:10}
+      atmosphere: ${RECOMMENDATION_WEIGHT_ATMOSPHERE:12}
+      rainy-indoor: ${RECOMMENDATION_WEIGHT_RAINY_INDOOR:10}
+      rainy-day-tag: ${RECOMMENDATION_WEIGHT_RAINY_DAY_TAG:10}
+      time-of-day: ${RECOMMENDATION_WEIGHT_TIME_OF_DAY:8}
+      distance-maximum: ${RECOMMENDATION_WEIGHT_DISTANCE_MAXIMUM:20}
   weather:
     base-url: ${WEATHER_BASE_URL:https://api.open-meteo.com/v1}
     connect-timeout: ${WEATHER_CONNECT_TIMEOUT:3s}
